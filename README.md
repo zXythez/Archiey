@@ -54,4 +54,4 @@ Bug reports, reproducible test cases and constructive suggestions are welcome. C
 
 ---
 
-Developed by **Shattercore Studio**.
+Developed by **Shattercore (Xythe)**.

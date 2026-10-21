@@ -2,7 +2,7 @@
 
 **A minimal Android file manager.**
 
-Archiey is an open-source Android file manager developed under **Shattercore Studio**, built with **Kotlin**, **Jetpack Compose**, and **Material 3**.
+Archiey is an open-source Android file manager developed under **Shattercore (Xythe)**, built with **Kotlin**, **Jetpack Compose**, and **Material 3**.
 
 > **Development status:** Early development. Features and compatibility are still being tested. This repository is being prepared for the first source-code upload.
 

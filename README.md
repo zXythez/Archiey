@@ -4,7 +4,7 @@
 
 Archiey is an open-source Android file manager developed under **Shattercore (Xythe)**, built with **Kotlin**, **Jetpack Compose**, and **Material 3**.
 
-> **Development status:** Early development. Features and compatibility are still being tested. This repository is being prepared for the first source-code upload.
+> **Development status:** Early development. Features and compatibility are still being tested. The source code is available in this repository. This is an early development build, not a stable release.
 
 ## Goals
 
@@ -40,9 +40,62 @@ The items above describe development work, **not a claim that every feature is c
 
 ## Getting started
 
-The Android project source has not yet been published here. Once uploaded, open the repository root in a compatible Android IDE, allow Gradle to synchronize, and build the debug variant.
+### Requirements
 
-Do not commit local SDK paths, signing keys, credentials, generated build outputs, or private device data.
+- A compatible Android development environment (Android Studio or an Android IDE with Gradle support)
+- JDK 17
+- Android SDK Platform 36 and compatible build tools
+- Internet access for the first Gradle dependency sync
+- An Android device or emulator for testing (minimum API 26 / Android 8.0)
+
+The project currently compiles with SDK 36 and targets API 34. These values are not a guarantee of complete compatibility across all Android versions.
+
+### Clone the source
+
+```bash
+git clone https://github.com/zXythez/Archiey.git
+cd Archiey
+```
+
+### Build a debug APK
+
+Open the repository root in your Android IDE and let Gradle synchronize. Alternatively, from a terminal with a properly configured Android SDK and JDK 17:
+
+**Linux / macOS / Termux-compatible shell:**
+
+```bash
+chmod +x gradlew
+./gradlew assembleDebug
+```
+
+**Windows:**
+
+```bat
+gradlew.bat assembleDebug
+```
+
+If successful, the debug APK should be at:
+
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+You can install the debug APK using your IDE, or via ADB:
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Troubleshooting
+
+- **SDK not found:** Configure your SDK path in your IDE or in a local, untracked `local.properties` file using `sdk.dir`.
+- **JDK mismatch:** Ensure Gradle is running on JDK 17.
+- **Gradle sync fails:** Check network access, SDK Platform 36 installation and Gradle error output.
+- **Android-on-device IDEs:** Build tools and AAPT2 support vary; use the IDE's supported SDK/build configuration.
+
+### Important
+
+Archiey is under active development. Back up important files before testing file operations. Do not commit `local.properties`, credentials, signing keys, build outputs, or private device data.
 
 ## Contributing
 

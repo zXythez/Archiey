@@ -40,6 +40,9 @@ fun ArchieyApp(
     var renameBusy by remember { mutableStateOf(false) }
     var protectedWarning by remember { mutableStateOf(false) }
     var confirmDangerousRename by remember { mutableStateOf(false) }
+    var pasteError by remember { mutableStateOf<String?>(null) }
+    val pasteBusy by browser.pasteBusy.collectAsStateWithLifecycle()
+    val pasteCancelling by browser.pasteCancelling.collectAsStateWithLifecycle()
     val copySource by browser.copySource.collectAsStateWithLifecycle()
     val directory by browser.currentDirectory.collectAsStateWithLifecycle()
     val files by browser.files.collectAsStateWithLifecycle()
@@ -132,17 +135,23 @@ val sortDescending by browser.sortDescending.collectAsStateWithLifecycle()
                             )
 
                             TextButton(
-                                onClick = { browser.clearCopySelection() }
+                                onClick = { browser.clearCopySelection() },
+                                enabled = !pasteCancelling
                             ) {
-                                Text("Cancel")
+                                Text(if (pasteCancelling) "Cancelling..." else "Cancel")
                             }
 
                             Button(
-                                onClick = {},
-                                enabled = false
-                            ) {
-                                Text("Paste")
-                            }
+    onClick = {
+        pasteError = null
+        browser.pasteCopiedFile { resultError ->
+            pasteError = resultError
+        }
+    },
+    enabled = !pasteBusy && copySource != null
+) {
+    Text(if (pasteCancelling) "Stopping..." else if (pasteBusy) "Copying..." else "Paste")
+}
                         }
                     }
                 }
@@ -380,6 +389,21 @@ val sortDescending by browser.sortDescending.collectAsStateWithLifecycle()
                 }
             }
         }
+    }
+
+    if (pasteError != null) {
+        AlertDialog(
+            onDismissRequest = { pasteError = null },
+            title = { Text("Copy failed") },
+            text = {
+                Text(pasteError ?: "Unable to copy file")
+            },
+            confirmButton = {
+                TextButton(onClick = { pasteError = null }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 
     if (protectedWarning) {

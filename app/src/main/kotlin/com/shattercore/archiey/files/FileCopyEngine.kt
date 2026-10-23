@@ -4,10 +4,21 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.util.concurrent.CancellationException
 
 object FileCopyEngine {
+
+    internal fun interface Publisher {
+        fun publish(source: Path, destination: Path): Int
+    }
+
+    private val nativePublisher = Publisher { source, destination ->
+        NativeFileOps.renameNoReplaceNative(
+            source.toString(), destination.toString()
+        )
+    }
 
     data class Progress(
         val copiedBytes: Long,
@@ -19,49 +30,59 @@ object FileCopyEngine {
         destination: File,
         isCancelled: () -> Boolean = { false },
         onProgress: (Progress) -> Unit = {}
+    ): Result<File> = copyWithPublisher(
+        source, destination, isCancelled, onProgress, nativePublisher
+    )
+
+    internal fun copyWithPublisher(
+        source: File,
+        destination: File,
+        isCancelled: () -> Boolean = { false },
+        onProgress: (Progress) -> Unit = {},
+        publisher: Publisher
     ): Result<File> = runCatching {
 
-        val sourcePath = source.toPath()
-        val destinationPath = destination.toPath()
+        val src = source.toPath()
+        val dst = destination.toPath()
 
-        require(
-            Files.isRegularFile(
-                sourcePath,
-                LinkOption.NOFOLLOW_LINKS
-            )
-        ) {
+        require(Files.isRegularFile(src, LinkOption.NOFOLLOW_LINKS)) {
             "Source must be a regular file"
         }
 
-        val parent = destinationPath.parent
-            ?: error("Invalid destination")
+        val parent = dst.parent
+            ?: throw IOException("Invalid destination")
 
-        require(Files.isDirectory(parent)) {
+        require(Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
             "Destination folder does not exist"
+        }
+
+        require(!Files.exists(dst, LinkOption.NOFOLLOW_LINKS)) {
+            "Destination already exists"
         }
 
         if (isCancelled()) {
             throw CancellationException("Copy cancelled")
         }
 
-        val totalBytes = Files.size(sourcePath)
-        var copiedBytes = 0L
+        val total = Files.size(src)
+        var copied = 0L
 
-        var destinationCreated = false
+        val temp: Path = Files.createTempFile(
+            parent,
+            ".archiey-copy-",
+            ".tmp"
+        )
 
         try {
-            Files.newOutputStream(
-                destinationPath,
-                StandardOpenOption.CREATE_NEW,
-                StandardOpenOption.WRITE
-            ).use { output ->
+            Files.newInputStream(src).use { input ->
+                Files.newOutputStream(
+                    temp,
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.TRUNCATE_EXISTING
+                ).use { output ->
 
-                destinationCreated = true
-
-                Files.newInputStream(sourcePath).use { input ->
                     val buffer = ByteArray(64 * 1024)
-
-                    onProgress(Progress(0L, totalBytes))
+                    onProgress(Progress(0L, total))
 
                     while (true) {
                         if (isCancelled()) {
@@ -72,11 +93,8 @@ object FileCopyEngine {
                         if (count == -1) break
 
                         output.write(buffer, 0, count)
-                        copiedBytes += count
-
-                        onProgress(
-                            Progress(copiedBytes, totalBytes)
-                        )
+                        copied += count
+                        onProgress(Progress(copied, total))
                     }
                 }
             }
@@ -85,19 +103,30 @@ object FileCopyEngine {
                 throw CancellationException("Copy cancelled")
             }
 
-            if (copiedBytes != totalBytes ||
-                Files.size(destinationPath) != totalBytes
-            ) {
+            if (copied != total || Files.size(temp) != total) {
                 throw IOException("Copied file size mismatch")
             }
 
-            destinationCreated = false
-            destination
+            if (Files.exists(dst, LinkOption.NOFOLLOW_LINKS)) {
+                throw IOException("Destination already exists")
+            }
+
+            // Experimental: filesystem support and collision
+            // semantics must be verified before production use.
+            val errno = publisher.publish(temp, dst)
+
+            if (errno != 0) {
+                throw IOException(
+                    "Native no-replace publish failed (errno=$errno)"
+                )
+            }
+
+            dst.toFile()
 
         } finally {
-            if (destinationCreated) {
-                Files.deleteIfExists(destinationPath)
-            }
+            // Only clean up our uniquely created staging path.
+            // Never delete the final destination here.
+            Files.deleteIfExists(temp)
         }
     }
 }

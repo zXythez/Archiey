@@ -118,8 +118,7 @@ fun FileItem(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false }
             ) {
-                if (!entry.isDirectory) {
-                    DropdownMenuItem(
+                DropdownMenuItem(
                         text = { Text("Copy") },
                         leadingIcon = {
                             Icon(
@@ -132,7 +131,6 @@ fun FileItem(
                             onCopy(entry)
                         }
                     )
-                }
 
                 DropdownMenuItem(
                     text = { Text("Rename") },
